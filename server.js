@@ -5,6 +5,8 @@
 'use strict';
 const http=require('http'),fs=require('fs'),path=require('path'),url=require('url'),crypto=require('crypto');
 const PORT=process.env.PORT||3000,ROOT=__dirname,DATA=path.join(ROOT,'data'),PUB=path.join(ROOT,'public');
+// Ensure data dir exists (Railway ephemeral filesystem)
+if(!fs.existsSync(DATA))fs.mkdirSync(DATA,{recursive:true});
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon'};
 
 // Rate limiter
@@ -152,7 +154,7 @@ process.on('uncaughtException',e=>console.error('Uncaught:',e));
 process.on('unhandledRejection',e=>console.error('Unhandled:',e));
 process.on('SIGTERM',()=>server.close(()=>process.exit(0)));
 
-server.listen(PORT,()=>{
-  console.log(`\n  KAAAND ► http://localhost:${PORT}\n  API    ► http://localhost:${PORT}/api/articles\n  Zero dependencies. Pure Node.js.\n`);
+server.listen(PORT,'0.0.0.0',()=>{
+  console.log(`\n  KAAAND live on port ${PORT}\n  API: /api/articles\n`);
 });
 module.exports=server;

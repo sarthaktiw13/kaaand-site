@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initKeyboard();
   initThreeCover();
   initThreeVinyl();
+  initThreeMusicEQ();
+  initThreeShop();
 });
 
 // ── LOADER ────────────────────────────────────────────────
@@ -658,6 +660,307 @@ function initThreeVinyl() {
     pPoints.rotation.y = frame * 0.004;
     pPoints.position.y = floatY * 0.3;
 
+    renderer.render(scene, camera);
+  };
+  animate();
+}
+
+// ── SHOP NOTIFY ───────────────────────────────────────────
+window.submitShopNotify = async function() {
+  const input = document.getElementById('shop-email');
+  const msg   = document.getElementById('shop-msg');
+  const btn   = document.querySelector('.shop-notify-btn');
+  const email = (input.value||'').trim();
+  if (!email) { msg.textContent='Enter your email.'; msg.className='shop-notify-msg err'; return; }
+  btn.disabled=true; btn.textContent='Adding...';
+  msg.textContent=''; msg.className='shop-notify-msg';
+  try {
+    const res = await api.post('/newsletter', {email});
+    if (res.success) {
+      input.value=''; msg.textContent='✓ We\'ll notify you on drop day.'; msg.className='shop-notify-msg ok';
+      toast('You\'re on the drop list.');
+    } else {
+      msg.textContent='✗ '+(res.error||'Try again.'); msg.className='shop-notify-msg err';
+    }
+  } catch(e) { msg.textContent='✗ Network error.'; msg.className='shop-notify-msg err'; }
+  btn.disabled=false; btn.textContent='Notify Me →';
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('shop-email');
+  if (inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') window.submitShopNotify(); });
+});
+
+// ══════════════════════════════════════════════════════════
+//  THREE.JS — MUSIC EQ BARS
+// ══════════════════════════════════════════════════════════
+function initThreeMusicEQ() {
+  if (typeof THREE === 'undefined') return;
+  const canvas = document.getElementById('music-eq-canvas');
+  if (!canvas) return;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setClearColor(0x000000, 0);
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.set(0, 2, 14);
+  camera.lookAt(0, 0, 0);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const key = new THREE.DirectionalLight(0x8b2e1e, 2.5);
+  key.position.set(0, 8, 4); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xe8ddd0, 0.4);
+  fill.position.set(-6, 2, 6); scene.add(fill);
+
+  // EQ bar columns
+  const COLS = 48;
+  const bars = [];
+  const BAR_W = 0.22;
+  const SPACING = 0.32;
+  const TOTAL = COLS * SPACING;
+
+  // Two materials — dim and accent
+  const matDim = new THREE.MeshStandardMaterial({ color:0x1c1410, metalness:0.6, roughness:0.4 });
+  const matRed = new THREE.MeshStandardMaterial({ color:0x8b2e1e, metalness:0.5, roughness:0.3 });
+  const matMid = new THREE.MeshStandardMaterial({ color:0x2a1f1a, metalness:0.6, roughness:0.4 });
+
+  for (let i = 0; i < COLS; i++) {
+    const h = 0.3;
+    const geo = new THREE.BoxGeometry(BAR_W, h, BAR_W);
+    // Pick material based on position
+    const isAccent = i % 8 === 0;
+    const mat = isAccent ? matRed.clone() : (i % 3 === 0 ? matMid.clone() : matDim.clone());
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.x = -TOTAL/2 + i * SPACING;
+    mesh.position.y = 0;
+    scene.add(mesh);
+    bars.push({ mesh, phase: Math.random()*Math.PI*2, freq: 0.4+Math.random()*1.2, base:0.15+Math.random()*0.3 });
+  }
+
+  const resize = () => {
+    const hero = document.querySelector('.music-hero');
+    if (!hero) return;
+    const w=hero.clientWidth, h=hero.clientHeight||400;
+    renderer.setSize(w,h,false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  let frame = 0;
+  let running = false;
+  // Only animate when section is visible
+  const obs = new IntersectionObserver(entries => {
+    running = entries[0].isIntersecting;
+  }, {threshold:0.1});
+  const section = document.getElementById('music-section');
+  if (section) obs.observe(section);
+
+  const animate = () => {
+    requestAnimationFrame(animate);
+    if (!running) return;
+    frame++;
+    bars.forEach((b,i) => {
+      // Multi-frequency oscillation for organic feel
+      const t = frame * 0.018;
+      const h = b.base
+        + Math.sin(t * b.freq + b.phase) * 0.6
+        + Math.sin(t * b.freq * 2.3 + b.phase * 1.7) * 0.25
+        + Math.abs(Math.sin(t * 0.3 + i*0.15)) * 0.4;
+      const clamped = Math.max(0.06, h);
+      b.mesh.scale.y = clamped;
+      b.mesh.position.y = clamped * 0.5 - 0.5;
+    });
+    renderer.render(scene, camera);
+  };
+  animate();
+}
+
+// ══════════════════════════════════════════════════════════
+//  THREE.JS — SHOP 3D MERCH BOX
+// ══════════════════════════════════════════════════════════
+function initThreeShop() {
+  if (typeof THREE === 'undefined') return;
+  const canvas = document.getElementById('shop-canvas');
+  if (!canvas) return;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0.5, 8);
+  camera.lookAt(0, 0, 0);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+  const key = new THREE.DirectionalLight(0xe8ddd0, 2.0);
+  key.position.set(3, 6, 5); key.castShadow=true; scene.add(key);
+  const red = new THREE.DirectionalLight(0x8b2e1e, 1.2);
+  red.position.set(-4, 1, 3); scene.add(red);
+  const back = new THREE.DirectionalLight(0x3a1a0e, 0.5);
+  back.position.set(0, -2, -5); scene.add(back);
+
+  // ── MAIN BOX — magazine/package shape ──
+  const boxW=2.2, boxH=2.8, boxD=0.4;
+
+  // Create canvas textures for each face
+  function makeTexture(drawFn, size=512) {
+    const c = document.createElement('canvas');
+    c.width=size; c.height=size;
+    drawFn(c.getContext('2d'), size);
+    return new THREE.CanvasTexture(c);
+  }
+
+  // FRONT face — KAAAND cover
+  const frontTex = makeTexture((ctx, s) => {
+    ctx.fillStyle = '#0e0a09';
+    ctx.fillRect(0,0,s,s);
+    // Red top bar
+    ctx.fillStyle = '#8b2e1e';
+    ctx.fillRect(0, 0, s, 32);
+    // Label text in bar
+    ctx.fillStyle = '#0e0a09';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.letterSpacing='4px';
+    ctx.fillText('ISSUE 00 — 2026', 16, 22);
+    // Main title
+    ctx.fillStyle = '#e8ddd0';
+    ctx.font = 'bold 82px sans-serif';
+    ctx.fillText('KAA', 28, 160);
+    ctx.fillStyle = '#8b2e1e';
+    ctx.fillText('AN', 28, 260);
+    ctx.fillStyle = '#e8ddd0';
+    ctx.fillText('D', 28, 360);
+    // Border
+    ctx.strokeStyle = 'rgba(232,221,208,0.15)';
+    ctx.lineWidth=3;
+    ctx.strokeRect(6,6,s-12,s-12);
+    // Redacted bars
+    ctx.fillStyle = 'rgba(139,46,30,0.4)';
+    ctx.fillRect(28, 400, 180, 8);
+    ctx.fillStyle = 'rgba(42,31,26,0.8)';
+    ctx.fillRect(28, 418, 110, 8);
+    ctx.fillStyle = 'rgba(139,46,30,0.4)';
+    ctx.fillRect(28, 436, 240, 8);
+    // Bottom
+    ctx.fillStyle = 'rgba(232,221,208,0.2)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('kaaand.xyz', 28, s-20);
+  });
+
+  // BACK face
+  const backTex = makeTexture((ctx, s) => {
+    ctx.fillStyle = '#0b0806';
+    ctx.fillRect(0,0,s,s);
+    ctx.strokeStyle = 'rgba(232,221,208,0.08)';
+    ctx.lineWidth=2; ctx.strokeRect(8,8,s-16,s-16);
+    ctx.fillStyle = 'rgba(139,46,30,0.6)';
+    ctx.fillRect(0,0,s,28);
+    ctx.fillStyle = '#0b0806';
+    ctx.font='bold 11px sans-serif'; ctx.letterSpacing='4px';
+    ctx.fillText('KAAAND MAGAZINE', 16, 19);
+    ctx.fillStyle='rgba(232,221,208,0.5)';
+    ctx.font='15px sans-serif'; ctx.letterSpacing='0px';
+    ctx.fillText('India\'s underground culture magazine.', 20, 70);
+    ctx.fillText('Fashion. Rave. Homegrown brands.', 20, 95);
+    ctx.fillText('Music. Identity. The floor.', 20, 120);
+    ctx.fillStyle='rgba(139,46,30,0.5)';
+    ctx.font='bold 11px sans-serif'; ctx.letterSpacing='3px';
+    ctx.fillText('kaaand.xyz', 20, s-24);
+  });
+
+  // SPINE face
+  const spineTex = makeTexture((ctx, s) => {
+    ctx.fillStyle = '#8b2e1e';
+    ctx.fillRect(0,0,s,s);
+    ctx.save();
+    ctx.translate(s/2, s/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='#0e0a09';
+    ctx.font='bold 52px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('KAAAND', 0, 18);
+    ctx.restore();
+  }, 128);
+
+  // Build materials array [+x, -x, +y, -y, +z (front), -z (back)]
+  const mats = [
+    new THREE.MeshStandardMaterial({ map:spineTex, metalness:0.2, roughness:0.7 }),  // right
+    new THREE.MeshStandardMaterial({ map:spineTex, metalness:0.2, roughness:0.7 }),  // left
+    new THREE.MeshStandardMaterial({ color:0x1c1410, metalness:0.3, roughness:0.6 }), // top
+    new THREE.MeshStandardMaterial({ color:0x1c1410, metalness:0.3, roughness:0.6 }), // bottom
+    new THREE.MeshStandardMaterial({ map:frontTex, metalness:0.1, roughness:0.5 }),  // front
+    new THREE.MeshStandardMaterial({ map:backTex,  metalness:0.1, roughness:0.5 }),  // back
+  ];
+
+  const boxGeo  = new THREE.BoxGeometry(boxW, boxH, boxD);
+  const boxMesh = new THREE.Mesh(boxGeo, mats);
+  boxMesh.castShadow = true;
+  scene.add(boxMesh);
+
+  // ── FLOATING PARTICLE FIELD ──
+  const PCNT = 500;
+  const pPos = new Float32Array(PCNT*3);
+  const pCol = new Float32Array(PCNT*3);
+  for (let i=0; i<PCNT; i++) {
+    pPos[i*3]   = (Math.random()-0.5)*18;
+    pPos[i*3+1] = (Math.random()-0.5)*14;
+    pPos[i*3+2] = (Math.random()-0.5)*10 - 1;
+    const red = Math.random() < 0.12;
+    const b = Math.random()*0.12+0.03;
+    pCol[i*3]=red?0.55:b; pCol[i*3+1]=red?0.18:b*0.9; pCol[i*3+2]=red?0.12:b*0.8;
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+  pGeo.setAttribute('color',    new THREE.BufferAttribute(pCol,3));
+  const pPoints = new THREE.Points(pGeo, new THREE.PointsMaterial({ size:0.05, vertexColors:true, transparent:true, opacity:0.55, sizeAttenuation:true, blending:THREE.AdditiveBlending, depthWrite:false }));
+  scene.add(pPoints);
+
+  // ── MOUSE TILT ──
+  let tx=0.3, ty=-0.4, cx2=0, cy2=0;
+  const sec = document.getElementById('shop-section');
+  if (sec) {
+    sec.addEventListener('mousemove', e => {
+      const r=sec.getBoundingClientRect();
+      tx = ((e.clientY-r.top)/r.height - 0.5) * 0.8;
+      ty = ((e.clientX-r.left)/r.width  - 0.5) * 1.2 - 0.3;
+    });
+    sec.addEventListener('mouseleave', ()=>{ tx=0.3; ty=-0.4; });
+  }
+
+  const resize = () => {
+    const s = document.getElementById('shop-section');
+    if (!s) return;
+    const w=s.clientWidth, h=Math.max(s.clientHeight,600);
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  let frame=0, running=false;
+  const obs = new IntersectionObserver(e=>{running=e[0].isIntersecting;},{threshold:0.1});
+  if (sec) obs.observe(sec);
+
+  const animate = () => {
+    requestAnimationFrame(animate);
+    if (!running && frame > 60) return;
+    frame++;
+    cx2 += (tx-cx2)*0.04; cy2 += (ty-cy2)*0.04;
+
+    // Slow auto-rotate + float
+    boxMesh.rotation.y = frame*0.008 + cy2;
+    boxMesh.rotation.x = cx2;
+    boxMesh.position.y = Math.sin(frame*0.016)*0.18;
+    boxMesh.position.x = Math.sin(frame*0.009)*0.12;
+
+    pPoints.rotation.y = frame*0.003;
     renderer.render(scene, camera);
   };
   animate();

@@ -49,6 +49,7 @@
     <li><button onclick="goTo('brands-section')">Brands</button></li>
     <li><button onclick="goTo('music-section')">Music</button></li>
     <li><button onclick="goTo('newsletter-section')">Newsletter</button></li>
+    <li><button onclick="goTo('shop-section')">Shop</button></li>
     <li><button onclick="goTo('manifesto-section')">About</button></li>
     <li><button onclick="goTo('submit-section')">Submit</button></li>
   </ul>
@@ -64,6 +65,7 @@
   <button onclick="goTo('brands-section');this.closest('#mobile-drawer').classList.remove('open')">Brands</button>
   <button onclick="goTo('music-section');this.closest('#mobile-drawer').classList.remove('open')">Music</button>
   <button onclick="goTo('newsletter-section');this.closest('#mobile-drawer').classList.remove('open')">Newsletter</button>
+  <button onclick="goTo('shop-section');this.closest('#mobile-drawer').classList.remove('open')">Shop</button>
   <button onclick="goTo('manifesto-section');this.closest('#mobile-drawer').classList.remove('open')">About</button>
   <button onclick="goTo('submit-section');this.closest('#mobile-drawer').classList.remove('open')">Submit</button>
 </div>
@@ -193,6 +195,7 @@
 <!-- MUSIC -->
 <section id="music-section" class="section">
   <div class="music-hero">
+    <canvas id="music-eq-canvas"></canvas>
     <div class="music-hero-img"></div>
     <div class="music-hero-overlay"></div>
     <div class="music-hero-content">
@@ -245,6 +248,49 @@
         <div class="nl-msg" id="nl-msg"></div>
         <div class="nl-fine-print">No spam. No ads. Just KAAAND. Unsubscribe anytime.</div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SHOP — COMING SOON ═══ -->
+<section id="shop-section" class="section">
+  <canvas id="shop-canvas"></canvas>
+  <div class="shop-overlay"></div>
+  <div class="shop-inner">
+    <div class="shop-left">
+      <div class="shop-cs-stamp">&#9632; Coming Soon</div>
+      <h2 class="shop-title">THE<br>KAAA<span class="r">N</span>D<br>SHOP</h2>
+      <p class="shop-desc">Limited edition merchandise, archival prints, and zine objects from India's underground. Everything drops in small runs. Once it's gone, it's gone.</p>
+      <div class="shop-teaser-grid">
+        <div class="shop-teaser-item">
+          <div class="shop-ti-cat">Apparel</div>
+          <div class="shop-ti-name">Issue 00 Tee</div>
+          <div class="shop-ti-price">&#8377;1,200 — Ltd. 100</div>
+        </div>
+        <div class="shop-teaser-item">
+          <div class="shop-ti-cat">Print</div>
+          <div class="shop-ti-name">Cover Art Print</div>
+          <div class="shop-ti-price">&#8377;800 — Ltd. 50</div>
+        </div>
+        <div class="shop-teaser-item">
+          <div class="shop-ti-cat">Zine</div>
+          <div class="shop-ti-name">Issue 00 Hard Copy</div>
+          <div class="shop-ti-price">&#8377;350 — Ltd. 300</div>
+        </div>
+        <div class="shop-teaser-item">
+          <div class="shop-ti-cat">Object</div>
+          <div class="shop-ti-name">KAAAND Tote</div>
+          <div class="shop-ti-price">&#8377;600 — Ltd. 150</div>
+        </div>
+      </div>
+      <div class="shop-notify-wrap">
+        <input type="email" id="shop-email" class="shop-notify-input" placeholder="Get notified when we drop">
+        <button class="shop-notify-btn" onclick="submitShopNotify()">Notify Me &#8594;</button>
+      </div>
+      <div class="shop-notify-msg" id="shop-msg"></div>
+    </div>
+    <div class="shop-right">
+      <!-- Three.js 3D merch box renders here via #shop-canvas -->
     </div>
   </div>
 </section>
@@ -321,6 +367,7 @@
   <div class="foot-links">
     <a onclick="goTo('manifesto-section')">About</a>
     <a onclick="goTo('newsletter-section')">Newsletter</a>
+    <a onclick="goTo('shop-section')">Shop</a>
     <a onclick="goTo('submit-section')">Submit</a>
     <a href="https://instagram.com" target="_blank" rel="noopener">Instagram</a>
   </div>
@@ -332,6 +379,7 @@
   <button class="mn-btn" data-section="brands" onclick="goTo('brands-section')"><div class="mn-dot"></div><span class="mn-lbl">Brands</span></button>
   <button class="mn-btn" data-section="music" onclick="goTo('music-section')"><div class="mn-dot"></div><span class="mn-lbl">Music</span></button>
   <button class="mn-btn" data-section="newsletter" onclick="goTo('newsletter-section')"><div class="mn-dot"></div><span class="mn-lbl">Drop</span></button>
+  <button class="mn-btn" data-section="shop" onclick="goTo('shop-section')"><div class="mn-dot"></div><span class="mn-lbl">Shop</span></button>
   <button class="mn-btn" data-section="submit" onclick="goTo('submit-section')"><div class="mn-dot"></div><span class="mn-lbl">Submit</span></button>
 </nav>
 

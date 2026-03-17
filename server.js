@@ -23,6 +23,19 @@ const san=(s,n=500)=>String(s||'').trim().slice(0,n).replace(/[<>]/g,'');
 const validEmail=(e)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim());
 function parseBody(req){return new Promise((ok,fail)=>{let b='';req.on('data',c=>{b+=c.toString();if(b.length>10000){req.destroy();fail(new Error('too large'));}});req.on('end',()=>{try{const ct=req.headers['content-type']||'';if(ct.includes('json'))ok(JSON.parse(b));else if(ct.includes('urlencoded')){const p=new URLSearchParams(b),o={};for(const[k,v]of p)o[k]=v;ok(o);}else ok({});}catch{fail(new Error('bad body'));}});req.on('error',fail);});}
 
+// Cookie Parser Helper
+const parseCookies = (req) => {
+  const list = {};
+  const rc = req.headers.cookie;
+  if (rc) {
+    rc.split(';').forEach(cookie => {
+      const parts = cookie.split('=');
+      list[parts.shift().trim()] = decodeURI(parts.join('='));
+    });
+  }
+  return list;
+};
+
 // Static server with etag
 function serve(res,fp,reqEtag){
   fs.stat(fp,(e,s)=>{
@@ -104,14 +117,50 @@ route('POST','/api/submit',async(req,res,_,__,ip)=>{
 route('POST','/api/newsletter',async(req,res,_,__,ip)=>{
   if(!limit(ip+':nl',3600000,10))return err(res,'Too many requests.',429);
   let b;try{b=await parseBody(req);}catch{return err(res,'Bad request');}
+  
   const email=san(b.email,200).toLowerCase();
   if(!email||!validEmail(email))return err(res,'Valid email required.');
-  const fp=path.join(DATA,'newsletter.json'),list=rdj(fp)||[];
+  
+  // Cookie tracking
+  const cookies = parseCookies(req);
+  let userId = cookies['kaaand_user_id'];
+  let cookieHeader = null;
+  
+  if (!userId) {
+    userId = crypto.randomUUID();
+    // Set a persistent cookie for 1 year
+    cookieHeader = `kaaand_user_id=${userId}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`;
+  }
+  
+  const fp=path.join(DATA,'newsletter.json');
+  const list=rdj(fp)||[];
+  
   if(list.some(e=>e.email===email))return err(res,'Already subscribed.',409);
-  list.push({email,timestamp:new Date().toISOString()});
+  
+  list.push({
+    id: crypto.randomUUID(),
+    email,
+    userId, // store the tracking cookie ID with the email
+    ip,
+    timestamp:new Date().toISOString()
+  });
+  
   wrj(fp,list);
-  console.log(`📧 ${email}`);
-  jsn(res,{success:true,message:"You're on the list."});
+  console.log(`📧 Newsletter Signup: ${email} (User ID: ${userId})`);
+  
+  const bData = JSON.stringify({success:true,message:"You're on the list."});
+  const headers = {
+    'Content-Type':'application/json; charset=utf-8',
+    'Content-Length':Buffer.byteLength(bData),
+    'Cache-Control':'no-store'
+  };
+  
+  if (cookieHeader) {
+    headers['Set-Cookie'] = cookieHeader;
+  }
+  
+  res.writeHead(200, headers);
+  res.end(bData);
 });
 
 // Main handler
@@ -158,3 +207,4 @@ server.listen(PORT,'0.0.0.0',()=>{
   console.log(`\n  KAAAND live on port ${PORT}\n  API: /api/articles\n`);
 });
 module.exports=server;
+
